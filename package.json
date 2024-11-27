@@ -5,9 +5,10 @@
   "type": "module",
   "homepage": "http://.",
   "scripts": {
-    "dev": "node server.js",     
+    "dev": "node server.js",      
+    "build": "node server.js",  
     "lint": "eslint .",
-    "start": "node server.js"     
+    "start": "node server.js"   
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
