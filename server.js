@@ -1,6 +1,6 @@
 import express from 'express';
-import mysql from 'mysql2';
 import cors from 'cors';
+import mysql from 'mysql'
 
 const app = express();
 app.use(cors());
@@ -14,7 +14,12 @@ const connection = mysql.createConnection({
     port: 3306,       
     user: 'root',
     password: '12345',
-    database: 'note'
+    database: 'note',
+    ssl: {
+        ca: fs.readFileSync('path/to/ca-cert.pem'), 
+        key: fs.readFileSync('path/to/client-key.pem'), 
+        cert: fs.readFileSync('path/to/client-cert.pem') 
+      }
 });
 
 connection.connect((err) => {
