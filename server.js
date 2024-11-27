@@ -1,8 +1,7 @@
-import express from 'express';
-import mysql from 'mysql2';
-import cors from 'cors';
+var express = require('express')
+var cors = require('cors')
+var app = express()
 
-const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -25,6 +24,11 @@ connection.connect((err) => {
     console.log('MySQL에 연결되었습니다! ID:', connection.threadId);
 });
 
+var corsOptions = {
+    origin: 'https://sub.example.app',
+    optionsSuccessStatus: 200 
+}
+
 // 연결 상태를 체크하고, 연결이 끊어졌으면 다시 연결하는 로직 추가
 function ensureConnection() {
     if (connection.state === 'disconnected') {
@@ -39,7 +43,7 @@ function ensureConnection() {
 }
 
 // 데이터 조회
-app.get('/', (req, res) => {
+app.get('/', cors(corsOptions),  (req, res) => {
     ensureConnection(); // 연결 상태 확인
     const query = 'SELECT * FROM noteProject';
     connection.query(query, (err, results) => {
@@ -60,7 +64,7 @@ app.get('/', (req, res) => {
 });
 
 // 데이터 삭제
-app.delete('/delete-note/:id', (req, res) => {
+app.delete('/delete-note/:id', cors(corsOptions),  (req, res) => {
     const noteId = req.params.id;
 
     const query = 'DELETE FROM noteProject WHERE id = ?';
@@ -74,7 +78,7 @@ app.delete('/delete-note/:id', (req, res) => {
 });
 
 // 노트 추가하는 API
-app.post('/add-note', (req, res) => {
+app.post('/add-note', cors(corsOptions),  (req, res) => {
     const { title, content, date } = req.body;
 
     const query = 'INSERT INTO noteProject (title, content, date) VALUES (?, ?, ?)';
@@ -96,7 +100,7 @@ app.post('/add-note', (req, res) => {
 });
 
 // 데이터 수정
-app.put('/edit-notes/:id', (req, res) => {
+app.put('/edit-notes/:id', cors(corsOptions),  (req, res) => {
     const { id } = req.params;
     const { title, content, date } = req.body;
 
