@@ -39,26 +39,31 @@ app.get('/', cors(), (req, res) => {
 app.post('/add-note', cors(), (req, res) => {
     const { title, content, date } = req.body;
 
-    // 새로운 노트 추가
-    const newNote = { title, content, date, id: Date.now() };
-
     fs.readFile(dataFilePath, 'utf8', (err, data) => {
         if (err) {
             return res.status(500).send('Failed to read data');
         }
 
         const notes = JSON.parse(data);
+
+        const newNote = { 
+            title, 
+            content, 
+            date, 
+            id: notes.length + 1  
+        };
+
         notes.push(newNote);
 
-        // 파일에 새로운 데이터 저장
         fs.writeFile(dataFilePath, JSON.stringify(notes, null, 2), (err) => {
             if (err) {
                 return res.status(500).send('Failed to save data');
             }
-            res.status(201).json(newNote);
+            res.status(201).json(newNote);  
         });
     });
 });
+
 
 // 데이터 삭제
 app.delete('/delete-note/:id', cors(), (req, res) => {
