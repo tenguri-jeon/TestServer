@@ -8,7 +8,8 @@
     "dev": "node server.js",
     "build": "node server.js",
     "lint": "eslint .",
-    "start": "node server.js"
+    "start": "node server.js",
+    "proxy": "https://port-0-testserver-m40ng5qod08f0898.sel4.cloudtype.app"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
