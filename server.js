@@ -37,7 +37,7 @@ app.get('/', cors(), (req, res) => {
 
 // 데이터 추가
 app.post('/add-note', cors(), (req, res) => {
-    const { title, content, date } = req.body;
+    const { title, content, date ,id} = req.body;
 
     fs.readFile(dataFilePath, 'utf8', (err, data) => {
         if (err) {
@@ -50,7 +50,7 @@ app.post('/add-note', cors(), (req, res) => {
             title, 
             content, 
             date, 
-            id: notes.length + 1  
+            id,
         };
 
         notes.push(newNote);
