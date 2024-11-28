@@ -1,122 +1,113 @@
-var express = require('express')
-var cors = require('cors')
-var app = express()
+import express from 'express';
+import cors from 'cors';
+import fs from'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+var app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 
-// MySQL 연결
-const connection = mysql.createConnection({
-    host: '127.0.0.1' ,  
-    port: 3306,       
-    user: 'root',
-    password: '12345',
-    database: 'note'
-});
+// ES 모듈에서는 __dirname 대신 아래 코드를 사용해야 합니다.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-connection.connect((err) => {
-    if (err) {
-        console.error('MySQL 연결 오류:', err.stack);
-        return;
-    }
-    console.log('MySQL에 연결되었습니다! ID:', connection.threadId);
-});
+const dataFilePath = path.join(__dirname, 'notes.json');
 
-var corsOptions = {
-    origin: 'https://sub.example.app',
-    optionsSuccessStatus: 200 
-}
-
-// 연결 상태를 체크하고, 연결이 끊어졌으면 다시 연결하는 로직 추가
-function ensureConnection() {
-    if (connection.state === 'disconnected') {
-        connection.connect((err) => {
-            if (err) {
-                console.error('MySQL 연결 오류:', err.stack);
-                return;
-            }
-            console.log('MySQL에 연결되었습니다! ID:', connection.threadId);
-        });
-    }
+// 데이터 파일이 존재하지 않으면 빈 배열로 초기화
+if (!fs.existsSync(dataFilePath)) {
+    fs.writeFileSync(dataFilePath, JSON.stringify([]));
 }
 
 // 데이터 조회
-app.get('/', cors(corsOptions),  (req, res) => {
-    ensureConnection(); // 연결 상태 확인
-    const query = 'SELECT * FROM noteProject';
-    connection.query(query, (err, results) => {
+app.get('/', cors(), (req, res) => {
+    fs.readFile(dataFilePath, 'utf8', (err, data) => {
         if (err) {
-            console.error('Database error:', err);
-            return res.status(500).send(`Database error: ${err.message}`); 
+            return res.status(500).send('Database error');
         }
 
-        // 날짜를 YYYY-MM-DD 형식으로 포맷
-        const formattedResults = results.map(note => {
-            const date = new Date(note.date);
-            note.date = date.toISOString().split('T')[0]; // 날짜만 반환 (시간 제외)
-            return note;
-        });
+        // 파일에서 데이터를 읽어와 JSON으로 변환
+        const notes = JSON.parse(data);
+        res.json(notes);
+    });
+});
 
-        res.json(formattedResults); // 포맷된 결과 반환
+// 데이터 추가
+app.post('/add-note', cors(), (req, res) => {
+    const { title, content, date } = req.body;
+
+    // 새로운 노트 추가
+    const newNote = { title, content, date, id: Date.now() };
+
+    fs.readFile(dataFilePath, 'utf8', (err, data) => {
+        if (err) {
+            return res.status(500).send('Failed to read data');
+        }
+
+        const notes = JSON.parse(data);
+        notes.push(newNote);
+
+        // 파일에 새로운 데이터 저장
+        fs.writeFile(dataFilePath, JSON.stringify(notes, null, 2), (err) => {
+            if (err) {
+                return res.status(500).send('Failed to save data');
+            }
+            res.status(201).json(newNote);
+        });
     });
 });
 
 // 데이터 삭제
-app.delete('/delete-note/:id', cors(corsOptions),  (req, res) => {
+app.delete('/delete-note/:id', cors(), (req, res) => {
     const noteId = req.params.id;
 
-    const query = 'DELETE FROM noteProject WHERE id = ?';
-    connection.query(query, [noteId], (err, result) => {
+    fs.readFile(dataFilePath, 'utf8', (err, data) => {
         if (err) {
-            console.error('삭제 오류:', err);
-            return res.status(500).json({ error: '삭제 실패', details: err });
-        }
-        res.status(200).json({ message: '노트 삭제 성공', id: noteId });
-    });
-});
-
-// 노트 추가하는 API
-app.post('/add-note', cors(corsOptions),  (req, res) => {
-    const { title, content, date } = req.body;
-
-    const query = 'INSERT INTO noteProject (title, content, date) VALUES (?, ?, ?)';
-    connection.query(query, [title, content, date], (err, result) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).send('Failed to insert data');
+            return res.status(500).send('Failed to read data');
         }
 
-        const newNote = {
-            id: result.insertId,
-            title,
-            content,
-            date,
-        };
+        let notes = JSON.parse(data);
+        notes = notes.filter(note => note.id !== parseInt(noteId));
 
-        res.status(201).json(newNote);
+        // 수정된 데이터 파일에 저장
+        fs.writeFile(dataFilePath, JSON.stringify(notes, null, 2), (err) => {
+            if (err) {
+                return res.status(500).send('Failed to delete data');
+            }
+            res.status(200).json({ message: 'Note deleted successfully', id: noteId });
+        });
     });
 });
 
 // 데이터 수정
-app.put('/edit-notes/:id', cors(corsOptions),  (req, res) => {
-    const { id } = req.params;
+app.put('/edit-notes/:id', cors(), (req, res) => {
+    const noteId = req.params.id;
     const { title, content, date } = req.body;
 
-    const query = 'UPDATE noteProject SET title = ?, content = ?, date = ? WHERE id = ?';
-
-    connection.query(query, [title, content, date, id], (err, result) => {
+    fs.readFile(dataFilePath, 'utf8', (err, data) => {
         if (err) {
-            console.log('수정 오류:', err);
-            return res.status(500).send('Failed to update note');
+            return res.status(500).send('Failed to read data');
         }
 
-        res.status(200).json({
-            id,
-            title,
-            content,
-            date,
+        let notes = JSON.parse(data);
+        const noteIndex = notes.findIndex(note => note.id === parseInt(noteId));
+
+        if (noteIndex === -1) {
+            return res.status(404).send('Note not found');
+        }
+
+        // 해당 노트 수정
+        notes[noteIndex] = { id: parseInt(noteId), title, content, date };
+
+        // 수정된 데이터 파일에 저장
+        fs.writeFile(dataFilePath, JSON.stringify(notes, null, 2), (err) => {
+            if (err) {
+                return res.status(500).send('Failed to update data');
+            }
+            res.status(200).json(notes[noteIndex]);
         });
     });
 });
@@ -125,16 +116,4 @@ app.put('/edit-notes/:id', cors(corsOptions),  (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`서버가 ${PORT} 포트에서 실행 중입니다.`);
-});
-
-// 서버 종료 시 연결 종료
-process.on('SIGINT', () => {
-    connection.end((err) => {
-        if (err) {
-            console.error('MySQL 연결 종료 오류:', err.stack);
-        } else {
-            console.log('MySQL 연결이 종료되었습니다.');
-        }
-        process.exit();
-    });
 });
