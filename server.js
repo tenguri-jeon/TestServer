@@ -1,17 +1,21 @@
 import express from 'express';
 import cors from 'cors';
-import fs from'fs';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 var app = express();
 
+// CORS 설정 개선
 app.use(cors({
-    origin: '*'  
+    origin: '*',  // 또는 특정 도메인만 허용할 경우 `origin: 'http://localhost:5173'`와 같이 설정 가능
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // 필요한 메서드만 허용
+    allowedHeaders: ['Content-Type', 'Authorization'], // 허용할 헤더 지정
+    credentials: true, // 쿠키와 같은 인증 정보가 필요한 경우 설정
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
 
 // ES 모듈에서는 __dirname 대신 아래 코드를 사용해야 합니다.
 const __filename = fileURLToPath(import.meta.url);
@@ -25,21 +29,19 @@ if (!fs.existsSync(dataFilePath)) {
 }
 
 // 데이터 조회
-app.get('/', cors(), (req, res) => {
+app.get('/', (req, res) => {
     fs.readFile(dataFilePath, 'utf8', (err, data) => {
         if (err) {
             return res.status(500).send('Database error');
         }
-
-        // 파일에서 데이터를 읽어와 JSON으로 변환
         const notes = JSON.parse(data);
         res.json(notes);
     });
 });
 
 // 데이터 추가
-app.post('/add-note', cors(), (req, res) => {
-    const { title, content, date ,id} = req.body;
+app.post('/add-note', (req, res) => {
+    const { title, content, date, id } = req.body;
 
     fs.readFile(dataFilePath, 'utf8', (err, data) => {
         if (err) {
@@ -47,13 +49,11 @@ app.post('/add-note', cors(), (req, res) => {
         }
 
         const notes = JSON.parse(data);
-        console.log(id)
-
         const newNote = { 
             title, 
             content, 
             date, 
-            id,
+            id 
         };
 
         notes.push(newNote);
@@ -62,14 +62,13 @@ app.post('/add-note', cors(), (req, res) => {
             if (err) {
                 return res.status(500).send('Failed to save data');
             }
-            res.status(201).json(newNote);  
+            res.status(201).json(newNote);
         });
     });
 });
 
-
 // 데이터 삭제
-app.delete('/delete-note/:id', cors(), (req, res) => {
+app.delete('/delete-note/:id', (req, res) => {
     const noteId = req.params.id;
 
     fs.readFile(dataFilePath, 'utf8', (err, data) => {
@@ -80,7 +79,6 @@ app.delete('/delete-note/:id', cors(), (req, res) => {
         let notes = JSON.parse(data);
         notes = notes.filter(note => note.id !== parseInt(noteId));
 
-        // 수정된 데이터 파일에 저장
         fs.writeFile(dataFilePath, JSON.stringify(notes, null, 2), (err) => {
             if (err) {
                 return res.status(500).send('Failed to delete data');
@@ -91,7 +89,7 @@ app.delete('/delete-note/:id', cors(), (req, res) => {
 });
 
 // 데이터 수정
-app.put('/edit-notes/:id', cors(), (req, res) => {
+app.put('/edit-notes/:id', (req, res) => {
     const noteId = req.params.id;
     const { title, content, date } = req.body;
 
@@ -107,10 +105,8 @@ app.put('/edit-notes/:id', cors(), (req, res) => {
             return res.status(404).send('Note not found');
         }
 
-        // 해당 노트 수정
         notes[noteIndex] = { id: parseInt(noteId), title, content, date };
 
-        // 수정된 데이터 파일에 저장
         fs.writeFile(dataFilePath, JSON.stringify(notes, null, 2), (err) => {
             if (err) {
                 return res.status(500).send('Failed to update data');
@@ -120,7 +116,6 @@ app.put('/edit-notes/:id', cors(), (req, res) => {
     });
 });
 
-// 서버 실행
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`서버가 ${PORT} 포트에서 실행 중입니다.`);
