@@ -45,6 +45,7 @@ app.post('/add-note', cors(), (req, res) => {
         }
 
         const notes = JSON.parse(data);
+        console.log(id)
 
         const newNote = { 
             title, 
